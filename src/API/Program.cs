@@ -5,14 +5,11 @@ using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Controllers
 builder.Services.AddControllers();
 
-// Clean Architecture Dependency Injections
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// Configure Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -26,10 +23,8 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Global Exception Handling Middleware
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// Configure Swagger in Development (and enable root Swagger UI)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
