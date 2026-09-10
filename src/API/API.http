@@ -1,0 +1,53 @@
+@API_HostAddress = https://localhost:7001
+
+### Get all projects
+GET {{API_HostAddress}}/api/projects
+Accept: application/json
+
+### Create a new project
+POST {{API_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+  "name": "E-Commerce Revamp",
+  "description": "Migration to Clean Architecture and microservices",
+  "status": "Active"
+}
+
+### Get project by ID
+GET {{API_HostAddress}}/api/projects/1
+Accept: application/json
+
+### Create a task for project
+POST {{API_HostAddress}}/api/tasks
+Content-Type: application/json
+
+{
+  "title": "Design Database Schema",
+  "description": "Configure entity relationships and constraints in AppDbContext",
+  "priority": 3,
+  "status": 1,
+  "projectId": 1
+}
+
+### Get all tasks
+GET {{API_HostAddress}}/api/tasks
+Accept: application/json
+
+### Get tasks by project ID
+GET {{API_HostAddress}}/api/tasks/project/1
+Accept: application/json
+
+### Add a comment to task
+POST {{API_HostAddress}}/api/comments
+Content-Type: application/json
+
+{
+  "content": "Make sure to configure cascade delete on tasks and comments.",
+  "author": "Architect",
+  "taskId": 1
+}
+
+### Get comments for task
+GET {{API_HostAddress}}/api/comments/task/1
+Accept: application/json
