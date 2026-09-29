@@ -1,53 +1,200 @@
-@API_HostAddress = https://localhost:7001
+@API_HostAddress = https://localhost:7006
+@AdminToken = your_admin_access_token_here
+@UserToken = your_user_access_token_here
+@RefreshToken = your_refresh_token_here
 
-### Get all projects
-GET {{API_HostAddress}}/api/projects
-Accept: application/json
+### ============================================================
+### AUTHENTICATION ENDPOINTS
+### ============================================================
 
-### Create a new project
-POST {{API_HostAddress}}/api/projects
+### 1. Register a new user (Automatically assigned "User" role)
+POST {{API_HostAddress}}/api/auth/register
 Content-Type: application/json
 
 {
-  "name": "E-Commerce Revamp",
-  "description": "Migration to Clean Architecture and microservices",
-  "status": "Active"
+  "userName": "johndoe",
+  "email": "johndoe@example.com",
+  "password": "Password123!",
+  "fullName": "John Doe"
 }
 
-### Get project by ID
-GET {{API_HostAddress}}/api/projects/1
+### 2. Login as Default Admin (Seeded on startup: admin@cleanarch.com / Admin123!)
+POST {{API_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "emailOrUserName": "admin@cleanarch.com",
+  "password": "Admin123!"
+}
+
+### 3. Login as Default User (Seeded on startup: user@cleanarch.com / User123!)
+POST {{API_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "emailOrUserName": "user@cleanarch.com",
+  "password": "User123!"
+}
+
+### 4. Get Current User profile and roles
+GET {{API_HostAddress}}/api/auth/me
+Authorization: Bearer {{UserToken}}
 Accept: application/json
 
-### Create a task for project
+### 5. Refresh Token (Rotates access token and refresh token)
+POST {{API_HostAddress}}/api/auth/refresh-token
+Content-Type: application/json
+
+{
+  "accessToken": "{{UserToken}}",
+  "refreshToken": "{{RefreshToken}}"
+}
+
+### 6. Logout (Revoke refresh token)
+POST {{API_HostAddress}}/api/auth/logout
+Authorization: Bearer {{UserToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{RefreshToken}}"
+}
+
+### ============================================================
+### ADMIN SYSTEM MANAGEMENT (Requires "Admin" Role)
+### ============================================================
+
+### 7. Admin: Get all users with roles (System Management)
+GET {{API_HostAddress}}/api/admin/users
+Authorization: Bearer {{AdminToken}}
+Accept: application/json
+
+### 8. Admin: Get system statistics overview
+GET {{API_HostAddress}}/api/admin/system-summary
+Authorization: Bearer {{AdminToken}}
+Accept: application/json
+
+### 9. Admin: Assign Role to a User
+POST {{API_HostAddress}}/api/admin/roles/assign
+Authorization: Bearer {{AdminToken}}
+Content-Type: application/json
+
+{
+  "userId": "target-user-id-here",
+  "role": "Admin"
+}
+
+### ============================================================
+### PROJECT ENDPOINTS (Secured with [Authorize])
+### ============================================================
+
+### 10. Get all projects
+GET {{API_HostAddress}}/api/projects
+Authorization: Bearer {{UserToken}}
+Accept: application/json
+
+### 11. User: Create a new project (Becomes owner of this project)
+POST {{API_HostAddress}}/api/projects
+Authorization: Bearer {{UserToken}}
+Content-Type: application/json
+
+{
+  "name": "User's Project",
+  "description": "Project owned and managed by standard user"
+}
+
+### 12. User: Modify Own Project (Allowed for owner or Admin)
+PUT {{API_HostAddress}}/api/projects/1
+Authorization: Bearer {{UserToken}}
+Content-Type: application/json
+
+{
+  "name": "User's Project (Updated)",
+  "description": "Updated project description"
+}
+
+### 13. User: Delete Own Project (Allowed for owner or Admin)
+DELETE {{API_HostAddress}}/api/projects/1
+Authorization: Bearer {{UserToken}}
+
+### ============================================================
+### TASK ENDPOINTS (Secured with [Authorize])
+### ============================================================
+
+### 14. User: Create Task in Own Project (Allowed)
 POST {{API_HostAddress}}/api/tasks
+Authorization: Bearer {{UserToken}}
 Content-Type: application/json
 
 {
   "title": "Design Database Schema",
   "description": "Configure entity relationships and constraints in AppDbContext",
-  "priority": 3,
-  "status": 1,
+  "priority": "High",
+  "status": "Todo",
   "projectId": 1
 }
 
-### Get all tasks
-GET {{API_HostAddress}}/api/tasks
-Accept: application/json
-
-### Get tasks by project ID
-GET {{API_HostAddress}}/api/tasks/project/1
-Accept: application/json
-
-### Add a comment to task
-POST {{API_HostAddress}}/api/comments
+### 15. User: Attempt to Create Task in Another User's Project (Returns 403 Forbidden)
+POST {{API_HostAddress}}/api/tasks
+Authorization: Bearer {{UserToken}}
 Content-Type: application/json
 
 {
-  "content": "Make sure to configure cascade delete on tasks and comments.",
-  "author": "Architect",
-  "taskId": 1
+  "title": "Unauthorized Task",
+  "description": "Should be blocked because user doesn't own project 99",
+  "priority": "Medium",
+  "status": "Todo",
+  "projectId": 99
 }
 
-### Get comments for task
-GET {{API_HostAddress}}/api/comments/task/1
-Accept: application/json
+### 16. User: Modify Own Task (Allowed)
+PUT {{API_HostAddress}}/api/tasks/1
+Authorization: Bearer {{UserToken}}
+Content-Type: application/json
+
+{
+  "title": "Updated Task Title",
+  "description": "Updated details",
+  "priority": "High",
+  "status": "InProgress",
+  "projectId": 1
+}
+
+### 17. User: Update Task Status (Todo -> InProgress)
+PATCH {{API_HostAddress}}/api/tasks/1/status
+Authorization: Bearer {{UserToken}}
+Content-Type: application/json
+
+{
+  "status": "InProgress"
+}
+
+### 18. Admin: Can modify any task across the system
+PUT {{API_HostAddress}}/api/tasks/1
+Authorization: Bearer {{AdminToken}}
+Content-Type: application/json
+
+{
+  "title": "Admin Modified Task",
+  "description": "System admin override",
+  "priority": "High",
+  "status": "Completed",
+  "projectId": 1
+}
+
+### ============================================================
+### COMMENT ENDPOINTS (Secured with [Authorize])
+### ============================================================
+
+### 19. User: Add Comment to a Task
+POST {{API_HostAddress}}/api/comments
+Authorization: Bearer {{UserToken}}
+Content-Type: application/json
+
+{
+  "taskId": 1,
+  "content": "Reviewed the workflow and authorization requirements."
+}
+
+### 20. User: Delete Own Comment (Allowed for owner or Admin)
+DELETE {{API_HostAddress}}/api/comments/1
+Authorization: Bearer {{UserToken}}

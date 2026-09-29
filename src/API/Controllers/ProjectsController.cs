@@ -1,23 +1,30 @@
-using MediatR;
 using Application.Common.Models;
 using Application.Features.Projects.Commands;
 using Application.Features.Projects.DTOs;
 using Application.Features.Projects.Queries;
+using Application.Interfaces;
+using Domain.Constants;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
+[Authorize(Policy = Policies.RequireUserOrAdmin)]
 public class ProjectsController : ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly ICurrentUserService _currentUserService;
 
-    public ProjectsController(ISender sender)
+    public ProjectsController(ISender sender, ICurrentUserService currentUserService)
     {
         _sender = sender;
+        _currentUserService = currentUserService;
     }
 
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ProjectDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetProjectsQuery(), cancellationToken);
@@ -26,6 +33,7 @@ public class ProjectsController : ApiControllerBase
 
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
@@ -36,9 +44,12 @@ public class ProjectsController : ApiControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create([FromBody] CreateProjectDto dto, CancellationToken cancellationToken)
     {
-        var command = new CreateProjectCommand(dto.Name, dto.Description);
+        var userId = dto.UserId ?? _currentUserService.UserId;
+        var command = new CreateProjectCommand(dto.Name, dto.Description, userId);
         var result = await _sender.Send(command, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result);
     }
@@ -46,6 +57,8 @@ public class ProjectsController : ApiControllerBase
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateProjectDto dto, CancellationToken cancellationToken)
     {
@@ -56,6 +69,8 @@ public class ProjectsController : ApiControllerBase
 
     [HttpDelete("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {

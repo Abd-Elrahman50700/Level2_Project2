@@ -1,8 +1,8 @@
 using Application.Common.Exceptions;
-using MediatR;
 using Application.Common.Models;
 using Application.Interfaces;
 using Domain.Entities;
+using MediatR;
 
 namespace Application.Features.Projects.Commands;
 
@@ -11,10 +11,12 @@ public record DeleteProjectCommand(int Id) : IRequest<ApiResponse<bool>>;
 public class DeleteProjectCommandHandler : IRequestHandler<DeleteProjectCommand, ApiResponse<bool>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService? _currentUserService;
 
-    public DeleteProjectCommandHandler(IUnitOfWork unitOfWork)
+    public DeleteProjectCommandHandler(IUnitOfWork unitOfWork, ICurrentUserService? currentUserService = null)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<bool>> Handle(DeleteProjectCommand request, CancellationToken cancellationToken)
@@ -23,6 +25,15 @@ public class DeleteProjectCommandHandler : IRequestHandler<DeleteProjectCommand,
         if (project is null)
         {
             throw new NotFoundException(nameof(Project), request.Id);
+        }
+
+        if (_currentUserService != null && !_currentUserService.IsAdmin)
+        {
+            var currentUserId = _currentUserService.UserId;
+            if (project.UserId != null && project.UserId != currentUserId)
+            {
+                throw new ForbiddenException("You are not allowed to delete another user's project.");
+            }
         }
 
         _unitOfWork.Projects.Delete(project);

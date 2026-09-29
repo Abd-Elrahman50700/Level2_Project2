@@ -1,12 +1,15 @@
-using MediatR;
 using Application.Common.Models;
 using Application.Features.Comments.Commands;
 using Application.Features.Comments.DTOs;
 using Application.Features.Comments.Queries;
+using Domain.Constants;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
+[Authorize(Policy = Policies.RequireUserOrAdmin)]
 public class CommentsController : ApiControllerBase
 {
     private readonly ISender _sender;
@@ -18,6 +21,7 @@ public class CommentsController : ApiControllerBase
 
     [HttpGet("task/{taskId:int}")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<CommentDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByTaskId(int taskId, CancellationToken cancellationToken)
     {
@@ -28,6 +32,8 @@ public class CommentsController : ApiControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<CommentDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Create([FromBody] CreateCommentDto dto, CancellationToken cancellationToken)
     {
@@ -38,6 +44,8 @@ public class CommentsController : ApiControllerBase
 
     [HttpDelete("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {

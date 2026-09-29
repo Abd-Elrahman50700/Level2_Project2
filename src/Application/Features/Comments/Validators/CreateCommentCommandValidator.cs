@@ -12,10 +12,10 @@ public class CreateCommentCommandValidator : AbstractValidator<CreateCommentComm
 
         RuleFor(v => v.Content)
             .NotEmpty().WithMessage("Comment content is required.")
-            .MaximumLength(1000).WithMessage("Comment content must not exceed 1000 characters.");
+            .MaximumLength(2000).WithMessage("Comment content must not exceed 2000 characters.");
 
         RuleFor(v => v.Author)
-            .NotEmpty().WithMessage("Comment author is required.")
-            .MaximumLength(100).WithMessage("Comment author must not exceed 100 characters.");
+            .MaximumLength(100).WithMessage("Comment author must not exceed 100 characters.")
+            .When(v => !string.IsNullOrEmpty(v.Author));
     }
 }

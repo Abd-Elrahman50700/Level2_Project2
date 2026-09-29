@@ -1,29 +1,29 @@
 namespace Application.Common.Models;
 
-public class ApiResponse<T>
+public class ApiResponse<T> : Result<T>
 {
-    public bool Succeeded { get; set; }
-    public string Message { get; set; } = string.Empty;
-    public T? Data { get; set; }
-    public IDictionary<string, string[]>? Errors { get; set; }
+    public ApiResponse() { }
 
-    public static ApiResponse<T> Success(T data, string message = "Success")
+    public ApiResponse(bool succeeded, T? data, string message, int? statusCode = null, IDictionary<string, string[]>? errors = null)
+        : base(succeeded, data, message, statusCode, errors)
     {
-        return new ApiResponse<T>
-        {
-            Succeeded = true,
-            Message = message,
-            Data = data
-        };
+    }
+
+    public static new ApiResponse<T> Success(T data, string message = "Success")
+    {
+        return new ApiResponse<T>(true, data, message, 200);
     }
 
     public static ApiResponse<T> Failure(string message, IDictionary<string, string[]>? errors = null)
     {
-        return new ApiResponse<T>
+        return new ApiResponse<T>(false, default, message, 400, errors);
+    }
+
+    public static ApiResponse<T> Failure(string message, IEnumerable<string> errors)
+    {
+        return new ApiResponse<T>(false, default, message, 400, new Dictionary<string, string[]>
         {
-            Succeeded = false,
-            Message = message,
-            Errors = errors
-        };
+            { "General", errors.ToArray() }
+        });
     }
 }

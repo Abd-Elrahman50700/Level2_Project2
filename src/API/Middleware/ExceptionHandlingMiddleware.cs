@@ -1,7 +1,9 @@
 using System.Net;
 using System.Text.Json;
+using API.Common;
 using Application.Common.Exceptions;
-using Application.Common.Models;
+using Domain.Exceptions;
+using Microsoft.EntityFrameworkCore;
 
 namespace API.Middleware;
 
@@ -31,29 +33,90 @@ public class ExceptionHandlingMiddleware
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        context.Response.ContentType = "application/json";
+        context.Response.ContentType = "application/problem+json";
 
-        var response = exception switch
+        var problemDetails = exception switch
         {
-            NotFoundException notFoundEx => new
-            {
-                StatusCode = (int)HttpStatusCode.NotFound,
-                Body = ApiResponse<object>.Failure(notFoundEx.Message)
-            },
-            ValidationException validationEx => new
-            {
-                StatusCode = (int)HttpStatusCode.BadRequest,
-                Body = ApiResponse<object>.Failure(validationEx.Message, validationEx.Errors)
-            },
-            _ => new
-            {
-                StatusCode = (int)HttpStatusCode.InternalServerError,
-                Body = ApiResponse<object>.Failure("An unexpected error occurred.")
-            }
+            ValidationException validationEx => CustomProblemDetails.Create(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                validationEx.Message,
+                context.Request.Path,
+                validationEx.Errors,
+                context.TraceIdentifier),
+
+            DomainException domainEx => CustomProblemDetails.Create(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                domainEx.Message,
+                context.Request.Path,
+                traceId: context.TraceIdentifier),
+
+            ArgumentException argEx => CustomProblemDetails.Create(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                argEx.Message,
+                context.Request.Path,
+                traceId: context.TraceIdentifier),
+
+            UnauthorizedAccessException unauthorizedEx => CustomProblemDetails.Create(
+                StatusCodes.Status401Unauthorized,
+                "Unauthorized",
+                unauthorizedEx.Message,
+                context.Request.Path,
+                traceId: context.TraceIdentifier),
+
+            UnauthorizedException unauthEx => CustomProblemDetails.Create(
+                StatusCodes.Status401Unauthorized,
+                "Unauthorized",
+                unauthEx.Message,
+                context.Request.Path,
+                traceId: context.TraceIdentifier),
+
+            ForbiddenException forbiddenEx => CustomProblemDetails.Create(
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
+                forbiddenEx.Message,
+                context.Request.Path,
+                traceId: context.TraceIdentifier),
+
+            NotFoundException notFoundEx => CustomProblemDetails.Create(
+                StatusCodes.Status404NotFound,
+                "Not Found",
+                notFoundEx.Message,
+                context.Request.Path,
+                traceId: context.TraceIdentifier),
+
+            ConflictException conflictEx => CustomProblemDetails.Create(
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                conflictEx.Message,
+                context.Request.Path,
+                traceId: context.TraceIdentifier),
+
+            DbUpdateConcurrencyException => CustomProblemDetails.Create(
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "A concurrency conflict occurred while updating the resource.",
+                context.Request.Path,
+                traceId: context.TraceIdentifier),
+
+            _ => CustomProblemDetails.Create(
+                StatusCodes.Status500InternalServerError,
+                "Internal Server Error",
+                "An unexpected error occurred. Please try again later.",
+                context.Request.Path,
+                traceId: context.TraceIdentifier)
         };
 
-        context.Response.StatusCode = response.StatusCode;
-        var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response.Body, jsonOptions));
+        context.Response.StatusCode = problemDetails.Status ?? StatusCodes.Status500InternalServerError;
+
+        var jsonOptions = new JsonSerializerOptions 
+        { 
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
+
+        await context.Response.WriteAsync(JsonSerializer.Serialize(problemDetails, jsonOptions));
     }
 }

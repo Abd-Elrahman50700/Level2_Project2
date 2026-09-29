@@ -11,9 +11,6 @@ public static class DependencyInjection
     {
         var assembly = Assembly.GetExecutingAssembly();
 
-        // Register MediatR and Pipeline Behaviors in correct order:
-        // 1. Logging (outermost: logs request name and measures execution time)
-        // 2. Validation (innermost: validates request and stops execution on failure)
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(assembly);
@@ -21,7 +18,6 @@ public static class DependencyInjection
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
 
-        // Register all FluentValidation validators in assembly
         services.AddValidatorsFromAssembly(assembly);
 
         return services;
